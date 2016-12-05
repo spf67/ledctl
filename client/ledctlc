@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+#
+#
+
+prog=$0
+
+usage()
+{
+	echo "Usage: $prog [-d dir] [-f fifo_cmd] client_name command [arg...]" >&1
+	exit 2
+}
+
+dir=${LEDCTL_DIR:-..}
+fifo_cmd='ledctld.conn'
+
+while getopts d:f: c
+do
+	case $c in
+		d)	dir=$OPTARG
+			;;
+		f)	fifo_cmd=$OPTARG
+			;;
+		?)	usage
+			;;
+	esac
+done
+shift $(expr $OPTIND - 1)
+
+[ $# -lt 2 ] && usage
+
+client=$1; shift
+cmd=$1; shift
+arg=$*
+
+qfile="$client.q"
+afile="$client.a"
+
+quit()
+{
+	local _rc=${1:-0}
+
+	rm -f $qfile $afile
+	exit $_rc
+}
+
+trap quit SIGINT 
+
+cd $dir && [ -p $fifo_cmd -a -w $fifo_cmd ] && {
+	rm -f $qfile $afile
+
+	mkfifo $qfile || quit 1
+	mkfifo $afile || quit 1
+
+	echo "connect $client" >> $fifo_cmd
+	exec 3>$qfile			# очередность открытия каналов важна
+	exec 4<$afile			# она должна совпадать с сервером
+
+	read answer <&4
+	[ ! -z "$answer" -a "$answer" = "OK" ] || quit 1
+
+	echo $cmd $arg >&3
+	read answer <&4
+	set -- $answer
+	[ ! -z "$1" -a "$1" = "OK" ] || quit 1
+	shift
+	[ ! -z "$1" ] && echo $* || true
+} || quit 1
+
+quit
