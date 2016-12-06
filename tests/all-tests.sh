@@ -22,6 +22,7 @@ tests=$(cat <<-EOF
 	t13-led-rate.sh			led-rate
 	t14-set-led-rate-bad.sh		set-led-rate bad
 	t15-invalid-cmd.sh		invalid command
+	t16-parallel-clients.sh		parallel clients
 EOF
 )
 
