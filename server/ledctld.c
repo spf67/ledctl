@@ -203,7 +203,7 @@ main (int argc, char *argv[])
 			if (rc)
 				perror ("pthread_detach");
 		}
-
+		fclose (fd);
 	}
 
 	return 0;
